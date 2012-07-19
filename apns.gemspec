@@ -18,5 +18,4 @@ Gem::Specification.new do |s|
   s.summary = %q{Simple Apple push notification service gem}
 
   s.add_development_dependency 'rspec'
-
 end

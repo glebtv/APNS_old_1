@@ -1,7 +1,12 @@
+class OverSized < Exception
+end
+
+require 'timeout'
+
 module APNS
   require 'socket'
   require 'openssl'
-  require 'json'
+  require 'yajl'
 
   @host = 'gateway.sandbox.push.apple.com'
   @port = 2195
@@ -21,8 +26,23 @@ module APNS
   def self.send_notifications(notifications)
     sock, ssl = self.open_connection
     
+    id = 100
     notifications.each do |n|
-      ssl.write(n.packaged_notification)
+      pck = n.packaged_notification(id)
+      pck.hexdump
+      raise OverSized if pck.size.to_i > 256
+      ssl.syswrite(pck)
+      id += 1
+      begin
+        Timeout::timeout(1) do
+          while line = ssl.read(6)
+            # line.hexdump
+            # p line.unpack("CCN")
+          end
+        end
+      rescue Exception => e
+        # p e
+      end
     end
     
     ssl.close
@@ -33,12 +53,34 @@ module APNS
     sock, ssl = self.feedback_connection
     
     apns_feedback = []
-    
-    while line = sock.gets   # Read lines from the socket
-      line.strip!
-      f = line.unpack('N1n1H140')
-      apns_feedback << [Time.at(f[0]), f[2]]
+    buffer = ''
+    begin
+      while line = ssl.sysread(38) # Read lines from the socket
+        buffer += line
+      end
+    rescue EOFError => e
+      
     end
+    # buffer.hexdump
+    index = 0
+    loop do
+      rtime = buffer[index..index+3].unpack('N1')
+      time = Time.at(rtime[0])
+      length = buffer[index+4..index+5].unpack('n1')[0]
+      token = buffer[index+6..index+6+length].unpack("H#{length}")[0]
+      apns_feedback << [time, token]
+      
+      index += length+6
+      break if index > buffer.length
+    end unless buffer.empty?
+    
+    # p apns_feedback
+    #while line = sock.gets   # Read lines from the socket
+    #  line.strip!
+    #  f = line.unpack('N1n1H*')
+    #  p f
+    #  apns_feedback << [Time.at(f[0]), f[2]]
+    #end
     
     ssl.close
     sock.close
@@ -56,8 +98,13 @@ module APNS
     context.cert = OpenSSL::X509::Certificate.new(File.read(self.pem))
     context.key  = OpenSSL::PKey::RSA.new(File.read(self.pem), self.pass)
 
+    # context.ssl_version = :TLSv1
+    context.ca_file = '/data/ps4/cert/server-ca-cert.pem'
+    context.verify_mode = OpenSSL::SSL::VERIFY_PEER
+    
     sock         = TCPSocket.new(self.host, self.port)
     ssl          = OpenSSL::SSL::SSLSocket.new(sock,context)
+    ssl.sync = true
     ssl.connect
 
     return sock, ssl
@@ -70,12 +117,17 @@ module APNS
     context      = OpenSSL::SSL::SSLContext.new
     context.cert = OpenSSL::X509::Certificate.new(File.read(self.pem))
     context.key  = OpenSSL::PKey::RSA.new(File.read(self.pem), self.pass)
-
+    
+    # context.ssl_version = :TLSv1
+    context.ca_file = '/data/ps4/cert/server-ca-cert.pem'
+    context.verify_mode = OpenSSL::SSL::VERIFY_PEER
+    
     fhost = self.host.gsub('gateway','feedback')
     puts fhost
     
     sock         = TCPSocket.new(fhost, 2196)
     ssl          = OpenSSL::SSL::SSLSocket.new(sock,context)
+    ssl.sync = true
     ssl.connect
 
     return sock, ssl

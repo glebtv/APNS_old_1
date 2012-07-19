@@ -16,10 +16,18 @@ module APNS
       end
     end
         
-    def packaged_notification
+    def packaged_notification(id)
       pt = self.packaged_token
       pm = self.packaged_message
-      [0, 0, 32, pt, 0, pm.bytesize, pm].pack("ccca*cca*")
+      puts pm
+      # p pm.bytesize
+      # [0, 0, 32, pt, 0, pm.bytesize, pm].pack("ccca*cca*")
+      # (Time.now + 3600).to_i
+      msg = [1, id, 0, pt.bytesize, pt, pm.bytesize, pm]
+      p msg
+      msg = msg.pack("C1N1N1na*na*")
+      # msg = [0, 0, 32, pt, 0, pm.bytesize, pm].pack("ccca*cca*")
+      msg
     end
   
     def packaged_token
@@ -32,7 +40,7 @@ module APNS
       aps['aps']['badge'] = self.badge if self.badge
       aps['aps']['sound'] = self.sound if self.sound
       aps.merge!(self.other) if self.other
-      aps.to_json
+      Yajl::Encoder.new.encode(aps)
     end
     
   end
