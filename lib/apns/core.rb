@@ -61,7 +61,6 @@ module APNS
     rescue EOFError => e
       
     end
-    # buffer.hexdump
     index = 0
     loop do
       rtime = buffer[index..index+3].unpack('N1')
@@ -73,14 +72,6 @@ module APNS
       index += length+6
       break if index > buffer.length
     end unless buffer.empty?
-    
-    # p apns_feedback
-    #while line = sock.gets   # Read lines from the socket
-    #  line.strip!
-    #  f = line.unpack('N1n1H*')
-    #  p f
-    #  apns_feedback << [Time.at(f[0]), f[2]]
-    #end
     
     ssl.close
     sock.close
@@ -98,8 +89,7 @@ module APNS
     context.cert = OpenSSL::X509::Certificate.new(File.read(self.pem))
     context.key  = OpenSSL::PKey::RSA.new(File.read(self.pem), self.pass)
 
-    # context.ssl_version = :TLSv1
-    context.ca_file = '/data/ps4/cert/server-ca-cert.pem'
+    context.ca_file = '/data/ps/cert/server-ca-cert.pem'
     context.verify_mode = OpenSSL::SSL::VERIFY_PEER
     
     sock         = TCPSocket.new(self.host, self.port)
@@ -118,8 +108,7 @@ module APNS
     context.cert = OpenSSL::X509::Certificate.new(File.read(self.pem))
     context.key  = OpenSSL::PKey::RSA.new(File.read(self.pem), self.pass)
     
-    # context.ssl_version = :TLSv1
-    context.ca_file = '/data/ps4/cert/server-ca-cert.pem'
+    context.ca_file = '/data/ps/cert/server-ca-cert.pem'
     context.verify_mode = OpenSSL::SSL::VERIFY_PEER
     
     fhost = self.host.gsub('gateway','feedback')
