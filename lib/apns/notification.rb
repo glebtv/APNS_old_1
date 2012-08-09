@@ -19,14 +19,8 @@ module APNS
     def packaged_notification(id)
       pt = self.packaged_token
       pm = self.packaged_message
-      puts pm
-      # p pm.bytesize
-      # [0, 0, 32, pt, 0, pm.bytesize, pm].pack("ccca*cca*")
-      # (Time.now + 3600).to_i
       msg = [1, id, 0, pt.bytesize, pt, pm.bytesize, pm]
-      p msg
       msg = msg.pack("C1N1N1na*na*")
-      # msg = [0, 0, 32, pt, 0, pm.bytesize, pm].pack("ccca*cca*")
       msg
     end
   
